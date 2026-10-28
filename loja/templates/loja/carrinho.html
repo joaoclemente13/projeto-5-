@@ -1,0 +1,52 @@
+{% extends "loja/base.html" %}
+
+{% block title %}Carrinho | Marketplace{% endblock %}
+
+{% block content %}
+    <h1>Seu carrinho</h1>
+    {% if itens %}
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Quantidade</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                        <tr>
+                            <td>
+                                {% if item.produto %}
+                                    {{ item.produto.nome }}
+                                {% else %}
+                                    Produto indisponível
+                                {% endif %}
+                            </td>
+                            <td>{{ item.quantidade }}</td>
+                            <td>R$ {{ item.subtotal }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="2">Total</th>
+                        <th>R$ {{ total }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% if user.is_authenticated %}
+            <form method="post" action="/checkout/">
+                {% csrf_token %}
+                <button type="submit">Finalizar compra</button>
+            </form>
+        {% else %}
+            <p><a href="/api/auth/login/">Entre para finalizar a compra.</a></p>
+        {% endif %}
+    {% else %}
+        <p>Seu carrinho está vazio.</p>
+        <a href="/">Voltar ao catálogo</a>
+    {% endif %}
+{% endblock %}

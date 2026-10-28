@@ -1,0 +1,79 @@
+{% extends "loja/base.html" %}
+
+{% block title %}Painel do vendedor | Marketplace Simplificado — IESB{% endblock %}
+
+{% block content %}
+    <h1>Painel do vendedor</h1>
+    <p>Resumo das vendas dos seus produtos. Pedidos cancelados não entram nos totais.</p>
+
+    <section class="indicadores" aria-label="Resumo das vendas">
+        <article class="painel-card">
+            <h2>Unidades vendidas</h2>
+            <p class="indicador-valor">{{ totais.unidades_vendidas }}</p>
+        </article>
+        <article class="painel-card">
+            <h2>Receita total</h2>
+            <p class="indicador-valor">R$ {{ totais.receita }}</p>
+        </article>
+        <article class="painel-card">
+            <h2>Pedidos com seus produtos</h2>
+            <p class="indicador-valor">{{ totais.quantidade_pedidos }}</p>
+        </article>
+    </section>
+
+    <h2>Produtos</h2>
+    {% if produtos %}
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Categoria</th>
+                        <th>Unidades vendidas</th>
+                        <th>Receita histórica</th>
+                        <th>Pedidos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for produto in produtos %}
+                        <tr>
+                            <td>{{ produto.nome }}</td>
+                            <td>{{ produto.categoria.nome }}</td>
+                            <td>{{ produto.unidades_vendidas }}</td>
+                            <td>R$ {{ produto.receita }}</td>
+                            <td>{{ produto.quantidade_pedidos }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>Você ainda não cadastrou produtos.</p>
+    {% endif %}
+
+    <h2>Vendas por categoria</h2>
+    {% if categorias %}
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Categoria</th>
+                        <th>Unidades vendidas</th>
+                        <th>Receita histórica</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for categoria in categorias %}
+                        <tr>
+                            <td>{{ categoria.produto__categoria__nome }}</td>
+                            <td>{{ categoria.unidades_vendidas }}</td>
+                            <td>R$ {{ categoria.receita }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>Ainda não há vendas válidas para agrupar.</p>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "loja/base.html" %}
+
+{% block title %}Catálogo | Marketplace Simplificado — IESB{% endblock %}
+
+{% block content %}
+    <h1>Catálogo de produtos</h1>
+    <p>Encontre livros e produtos de todos os vendedores.</p>
+    <form id="filtros" class="filtros">
+        <label>
+            Categoria
+            <select name="categoria">
+                <option value="">Todas</option>
+                {% for categoria in categorias %}
+                    <option value="{{ categoria.pk }}">{{ categoria.nome }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Preço mínimo
+            <input name="preco_min" type="number" min="0" step="0.01" inputmode="decimal">
+        </label>
+        <label>
+            Preço máximo
+            <input name="preco_max" type="number" min="0" step="0.01" inputmode="decimal">
+        </label>
+        <button type="submit">Filtrar produtos</button>
+        <button type="reset">Limpar filtros</button>
+    </form>
+    <p id="catalogo-mensagem" role="status">Carregando produtos...</p>
+    <section id="grade" class="grade" aria-label="Produtos"></section>
+    <form id="csrf-token-form" hidden>
+        {% csrf_token %}
+    </form>
+    <script>
+        const grade = document.getElementById('grade');
+        const mensagem = document.getElementById('catalogo-mensagem');
+        const filtros = document.getElementById('filtros');
+
+        function carregarProdutos() {
+            grade.replaceChildren();
+            mensagem.textContent = 'Carregando produtos...';
+            const parametros = new URLSearchParams(new FormData(filtros));
+            for (const [chave, valor] of [...parametros.entries()]) {
+                if (!valor.trim()) {
+                    parametros.delete(chave);
+                }
+            }
+            const query = parametros.toString();
+            fetch(`/api/produtos/${query ? `?${query}` : ''}`)
+                .then((response) => response.json().then((data) => {
+                    if (!response.ok) {
+                        const erro = data.categoria || data.preco_min ||
+                            data.preco_max || data.non_field_errors;
+                        throw new Error(
+                            Array.isArray(erro) ? erro[0] :
+                                erro || 'Não foi possível carregar os produtos.'
+                        );
+                    }
+                    return data;
+                }))
+                .then((data) => {
+                    const produtos = Array.isArray(data) ? data : data.results;
+                    if (!Array.isArray(produtos)) {
+                        throw new Error('A resposta do catálogo está indisponível.');
+                    }
+                    mensagem.textContent = produtos.length
+                        ? ''
+                        : 'Nenhum produto encontrado para esses filtros.';
+
+                    produtos.forEach((produto) => {
+                        const card = document.createElement('article');
+                        card.className = 'card';
+
+                        const nome = document.createElement('h2');
+                        nome.textContent = produto.nome;
+                        const categoria = document.createElement('p');
+                        categoria.textContent =
+                            `Categoria: ${produto.categoria_nome ?? '—'}`;
+                        const preco = document.createElement('p');
+                        preco.textContent = `Preço: R$ ${produto.preco}`;
+                        const estoque = document.createElement('p');
+                        estoque.textContent = Number(produto.estoque) > 0
+                            ? `Em estoque: ${produto.estoque} unidade(s)`
+                            : 'Sem estoque';
+                        estoque.className = Number(produto.estoque) > 0
+                            ? 'estoque'
+                            : 'sem-estoque';
+                        const nota = document.createElement('p');
+                        nota.textContent = produto.media_avaliacoes === null
+                            ? 'Ainda sem avaliações'
+                            : `★ ${produto.media_avaliacoes} (${produto.quantidade_avaliacoes} avaliações)`;
+                        const botao = document.createElement('button');
+                        botao.type = 'button';
+                        botao.textContent = 'Adicionar ao carrinho';
+                        botao.disabled = Number(produto.estoque) === 0;
+                        botao.addEventListener('click', () => {
+                            const token = document.querySelector(
+                                '[name=csrfmiddlewaretoken]'
+                            ).value;
+                            fetch(`/carrinho/adicionar/${encodeURIComponent(produto.id)}/`, {
+                                method: 'POST',
+                                headers: { 'X-CSRFToken': token },
+                            })
+                                .then((response) => response.json().then((body) => {
+                                    if (!response.ok) {
+                                        throw new Error(body.erro || 'Não foi possível adicionar o produto.');
+                                    }
+                                    return body;
+                                }))
+                                .then((body) => {
+                                    localStorage.setItem('cartCount', body.total_itens);
+                                    document.getElementById('cart-count').textContent =
+                                        body.total_itens;
+                                    mensagem.textContent =
+                                        'Produto adicionado ao carrinho.';
+                                })
+                                .catch(() => {
+                                    mensagem.textContent =
+                                        'Não foi possível adicionar o produto. Tente novamente.';
+                                });
+                        });
+
+                        card.append(nome, categoria, preco, estoque, nota, botao);
+                        if (produto.avaliacoes.length) {
+                            const avaliacoes = document.createElement('section');
+                            avaliacoes.className = 'avaliacoes';
+                            const titulo = document.createElement('h3');
+                            titulo.textContent = 'Avaliações recentes';
+                            avaliacoes.appendChild(titulo);
+                            produto.avaliacoes.forEach((avaliacao) => {
+                                const comentario = document.createElement('p');
+                                comentario.textContent =
+                                    `★ ${avaliacao.nota}/5 — ${avaliacao.comentario || 'Sem comentário'}`;
+                                avaliacoes.appendChild(comentario);
+                            });
+                            card.appendChild(avaliacoes);
+                        }
+                        grade.appendChild(card);
+                    });
+                })
+                .catch((erro) => {
+                    mensagem.textContent = erro.message ||
+                        'Não foi possível carregar o catálogo. Tente novamente mais tarde.';
+                });
+        }
+
+        filtros.addEventListener('submit', (event) => {
+            event.preventDefault();
+            carregarProdutos();
+        });
+        filtros.addEventListener('reset', () => {
+            setTimeout(carregarProdutos, 0);
+        });
+        carregarProdutos();
+    </script>
+{% endblock %}
